@@ -4,6 +4,7 @@ import os
 import tempfile
 import unittest
 from flask_alchemy import Alchemy
+from sqlalchemy import Column, Integer
 from sqlalchemy.ext.declarative import declarative_base
 
 
@@ -27,6 +28,7 @@ class Database(object):
 
 class User(Base):
     __tablename__ = 'user'
+    id = Column(Integer, primary_key=True)
 
 
 class AlchemyTest(unittest.TestCase):
@@ -38,4 +40,3 @@ class AlchemyTest(unittest.TestCase):
             'ALCHEMY_SLAVES': slave.db_file,
         })
         db.create_all()
-        # db.register_base(
