@@ -15,7 +15,7 @@ setup(
     url='https://github.com/lepture/flask-alchemy',
     author='Hsiaoming Yang',
     author_email='me@lepture.com',
-    description='The fastest markdown parser in pure Python',
+    description='SQLAlchemy for production with master slave support.',
     long_description=fread('README.rst'),
     license='BSD',
     py_modules=['flask_alchemy'],
