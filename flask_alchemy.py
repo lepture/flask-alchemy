@@ -3,7 +3,7 @@
     ~~~~~~~~~~~~~
 
     Flask-Alchemy is designed to work with SQLAlchemy default declarative_base,
-    with powerful master-slave and seprated databases support.
+    with powerful master-slave and separated databases support.
 """
 
 import random
