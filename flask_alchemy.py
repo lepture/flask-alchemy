@@ -8,6 +8,7 @@
 
 import random
 from threading import Lock
+from sqlalchemy.orm import scoped_session
 from sqlalchemy.orm.session import Session as SessionBase
 from sqlalchemy.sql.expression import Select
 
@@ -19,7 +20,7 @@ class Session(SessionBase):
     def __init__(self, db, autocommit=False, autoflush=True, **options):
         self.db = db
         super(Session, self).__init__(
-            bind=db.bind,
+            bind=db.get_engine(),
             autocommit=autocommit,
             autoflush=autoflush,
             **options
@@ -30,20 +31,24 @@ class Session(SessionBase):
             key = mapper.mapped_table.__tablename__
             if isinstance(clause, Select):
                 # get slave engine
-                return self.db.get_engine(key, slave=True)
-            return self.db.get_engine(key, slave=False)
+                return self.db.get_table_engine(key, slave=True)
+            return self.db.get_table_engine(key, slave=False)
         return SessionBase.get_bind(self, mapper, clause)
 
 
 class Alchemy(object):
-    def __init__(self, app=None):
+    def __init__(self, app=None, session_options=None):
         self._bases = []
         self._binds = {}
         self._bind_keys = {}
         self._engines = {}
         self._engine_lock = Lock()
-        self.session = self.create_session()
+
+        if session_options is None:
+            session_options = {}
+        self.session = self.create_session(session_options)
         self.app = app
+
         if app:
             self.init_app(app)
 
@@ -83,8 +88,13 @@ class Alchemy(object):
             self.session.remove()
             return response_or_exc
 
-    def create_session(self):
-        pass
+    def create_session(self, options):
+        scopefunc = options.pop('scopefunc', None)
+
+        def session_maker():
+            return Session(self, options)
+
+        return scoped_session(session_maker, scopefunc=scopefunc)
 
     def get_bind_key(self, table_name):
         return self._bind_keys.get(table_name, 'default')
@@ -99,15 +109,13 @@ class Alchemy(object):
             return None
         return random.choice(uris)
 
-    def get_engine(self, table_name, slave=False):
+    def get_engine(self, bind_key='default', slave=False):
         with self._engine_lock:
-            bind_key = self.get_bind_key(table_name)
             uri = None
             if slave:
                 uri = self.get_slave_uri(bind_key)
             if not uri:
                 uri = self._config['ALCHEMY_MASTERS'].get(bind_key)
-
             engine = self._engines.get(uri)
             if engine is not None:
                 return engine
@@ -115,10 +123,21 @@ class Alchemy(object):
             self._engines[uri] = engine
             return engine
 
-    def register_base(self, Base):
+    def get_table_engine(self, table_name, slave=False):
+        bind_key = self.get_bind_key(table_name)
+        return self.get_engine(bind_key, slave)
+
+    def register_base(self, Base, bind_key=None):
         Base.query = self.session.query_property()
-        # TODO
-        for name in Base.metadata.tables:
-            bind_key = self.get_bind_key(name)
-            table = Base.metadata.tables[name]
         self._bases.append(Base)
+        if bind_key:
+            # register table for bind_keys
+            for name in Base.metadata.tables:
+                if name not in self._bind_keys:
+                    self._bind_keys[name] = bind_key
+
+    def create_all(self, bind_key=None):
+        pass
+
+    def drop_all(self, bind_key=None):
+        pass
