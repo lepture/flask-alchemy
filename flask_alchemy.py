@@ -29,7 +29,7 @@ class Session(SessionBase):
 
     def get_bind(self, mapper, clause=None):
         if mapper is not None:
-            key = mapper.mapped_table.__tablename__
+            key = mapper.mapped_table.name
             if isinstance(clause, Select):
                 # get slave engine
                 return self.db.get_table_engine(key, slave=True)
@@ -109,6 +109,8 @@ class Alchemy(object):
         if not uris:
             # TODO warning
             return None
+        if isinstance(uris, text_types):
+            return uris
         return random.choice(uris)
 
     def get_engine(self, bind_key='default', slave=False):

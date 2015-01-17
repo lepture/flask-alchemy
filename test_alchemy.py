@@ -3,6 +3,7 @@
 import os
 import tempfile
 import unittest
+import sqlite3
 from flask_alchemy import Alchemy
 from sqlalchemy import Column, Integer, String
 from sqlalchemy.ext.declarative import declarative_base
@@ -42,6 +43,16 @@ class Topic(Base):
     title = Column(String(20))
 
 
+def query_tables(path):
+    sql = "SELECT name from sqlite_master WHERE type = 'table';"
+    conn = sqlite3.connect(path)
+    cursor = conn.execute(sql)
+    data = cursor.fetchall()
+    cursor.close()
+    conn.close()
+    return list(map(lambda o: o[0], data))
+
+
 class AlchemyTest(unittest.TestCase):
     def setUp(self):
         self.db_default = Database()
@@ -51,7 +62,7 @@ class AlchemyTest(unittest.TestCase):
         self.db_default.close()
         self.db_alt.close()
 
-    def test_create_all(self):
+    def xtest_create_all(self):
         db = Alchemy()
         config = {
             'ALCHEMY_MASTERS': {
@@ -65,3 +76,41 @@ class AlchemyTest(unittest.TestCase):
         db.init_app(config)
         db.register_base(Base)
         db.create_all()
+
+        data = query_tables(self.db_default.db_file)
+        assert 'user' in data
+        assert 'topic' not in data
+
+        data = query_tables(self.db_alt.db_file)
+        assert 'topic' in data
+        assert 'user' not in data
+
+    def test_master_slave(self):
+        db = Alchemy()
+        config = {
+            'ALCHEMY_MASTERS': {
+                'default': self.db_default.uri,
+            },
+            'ALCHEMY_SLAVES': {
+                'default': self.db_alt.uri
+            }
+        }
+        db.init_app(config)
+        db.register_base(Base)
+        db.create_all()
+
+        # make slave
+        with open(self.db_default.db_file) as f:
+            with open(self.db_alt.db_file, 'w') as d:
+                d.write(f.read())
+
+        user = User(name='alchemy')
+        db.session.add(user)
+        db.session.commit()
+        data = User.query.filter_by(name='alchemy').first()
+        assert data is None
+
+        # query from master
+        db._config['ALCHEMY_SLAVES'] = None
+        data = User.query.filter_by(name='alchemy').first()
+        assert data.name == 'alchemy'
