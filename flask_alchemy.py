@@ -8,6 +8,7 @@
 
 import random
 from threading import Lock
+from sqlalchemy import create_engine
 from sqlalchemy.orm import scoped_session
 from sqlalchemy.orm.session import Session as SessionBase
 from sqlalchemy.sql.expression import Select
@@ -81,12 +82,13 @@ class Alchemy(object):
             config['ALCHEMY_SLAVES'] = slave
 
         self._config = config
-        self._bind_keys = config.get('ALCHEMY_BIND_KEYS', {})
+        self._bind_keys = config.get('ALCHEMY_BIND_KEYS') or {}
 
-        @app.teardown_appcontext
-        def remove_session(response_or_exc):
-            self.session.remove()
-            return response_or_exc
+        if hasattr(app, 'teardown_appcontext'):
+            @app.teardown_appcontext
+            def remove_session(response_or_exc):
+                self.session.remove()
+                return response_or_exc
 
     def create_session(self, options):
         scopefunc = options.pop('scopefunc', None)
@@ -119,9 +121,13 @@ class Alchemy(object):
             engine = self._engines.get(uri)
             if engine is not None:
                 return engine
-            engine = self.make_engine(uri)
+            engine = self.create_engine(uri)
             self._engines[uri] = engine
             return engine
+
+    def create_engine(self, uri):
+        # TODO: patch the engine
+        return create_engine(uri, convert_unicode=True)
 
     def get_table_engine(self, table_name, slave=False):
         bind_key = self.get_bind_key(table_name)
@@ -136,8 +142,27 @@ class Alchemy(object):
                 if name not in self._bind_keys:
                     self._bind_keys[name] = bind_key
 
+    def _execute_metadata(self, Base, operation, bind_key=None):
+        binds = {}
+        op = getattr(Base.metadata, operation)
+        for name in Base.metadata.tables:
+            key = self.get_bind_key(name)
+            if bind_key is not None and key != bind_key:
+                # ignore other bind keys
+                continue
+            if key in binds:
+                binds[key].append(Base.metadata.tables[name])
+            else:
+                binds[key] = [Base.metadata.tables[name]]
+        for key in binds:
+            op(bind=self.get_engine(key), tables=binds[key])
+
+    def _execute_all_bases(self, operation, bind_key=None):
+        for Base in self._bases:
+            self._execute_metadata(Base, operation, bind_key=bind_key)
+
     def create_all(self, bind_key=None):
-        pass
+        self._execute_all_bases('create_all', bind_key)
 
     def drop_all(self, bind_key=None):
-        pass
+        self._execute_all_bases('drop_all', bind_key)
