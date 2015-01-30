@@ -6,15 +6,24 @@
     with powerful master-slave and separated databases support.
 """
 
+import sys
+PY3 = sys.version_info[0] == 3
+
 import random
+import logging
 from threading import Lock
 from sqlalchemy import create_engine
 from sqlalchemy.orm import scoped_session
 from sqlalchemy.orm.session import Session as SessionBase
 from sqlalchemy.sql.expression import Select
 
-#: TODO
-text_types = (str, unicode)
+
+if PY3:
+    text_types = (str,)
+else:
+    text_types = (str, unicode)
+
+logger = logging.getLogger('flask-alchemy')
 
 
 class Session(SessionBase):
@@ -48,7 +57,6 @@ class Alchemy(object):
         if session_options is None:
             session_options = {}
         self.session = self.create_session(session_options)
-        self.app = app
 
         if app:
             self.init_app(app)
@@ -60,7 +68,6 @@ class Alchemy(object):
         if isinstance(app, dict):
             config = app
         else:
-            self.app = app
             config = app.config
 
         #: {"bind_key": "URI"}
@@ -107,7 +114,7 @@ class Alchemy(object):
             return None
         uris = slave_uris.get(bind_key)
         if not uris:
-            # TODO warning
+            logger.warn('No ALCHEMY_SLAVES for bind key: %r' % bind_key)
             return None
         if isinstance(uris, text_types):
             return uris

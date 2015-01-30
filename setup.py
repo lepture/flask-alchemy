@@ -21,6 +21,8 @@ setup(
     py_modules=['flask_alchemy'],
     zip_safe=False,
     platforms='any',
+    tests_require=['nose'],
+    test_suite='nose.collector',
     classifiers=[
         'Development Status :: 1 - Planning',
         'Environment :: Web Environment',
