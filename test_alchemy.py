@@ -62,7 +62,7 @@ class AlchemyTest(unittest.TestCase):
         self.db_default.close()
         self.db_alt.close()
 
-    def xtest_create_all(self):
+    def test_create_all(self):
         db = Alchemy()
         config = {
             'ALCHEMY_MASTERS': {
@@ -85,6 +85,13 @@ class AlchemyTest(unittest.TestCase):
         assert 'topic' in data
         assert 'user' not in data
 
+        db.drop_all()
+        data = query_tables(self.db_default.db_file)
+        assert len(data) == 0
+
+        data = query_tables(self.db_alt.db_file)
+        assert len(data) == 0
+
     def test_master_slave(self):
         db = Alchemy()
         config = {
@@ -101,7 +108,7 @@ class AlchemyTest(unittest.TestCase):
 
         # make slave
         with open(self.db_default.db_file) as f:
-            with open(self.db_alt.db_file, 'w') as d:
+            with open(self.db_alt.db_file, 'wb') as d:
                 d.write(f.read())
 
         user = User(name='alchemy')
@@ -114,3 +121,54 @@ class AlchemyTest(unittest.TestCase):
         db._config['ALCHEMY_SLAVES'] = None
         data = User.query.filter_by(name='alchemy').first()
         assert data.name == 'alchemy'
+
+
+class MultipleSlaveTest(unittest.TestCase):
+    def setUp(self):
+        self.db_default = Database()
+        self.db_slave_1 = Database()
+        self.db_slave_2 = Database()
+
+    def tearDown(self):
+        self.db_default.close()
+        self.db_slave_1.close()
+        self.db_slave_2.close()
+
+    def test_master_slave(self):
+        db = Alchemy()
+        config = {
+            'ALCHEMY_MASTERS': {
+                'default': self.db_default.uri,
+            },
+            'ALCHEMY_SLAVES': {
+                'default': [
+                    self.db_slave_1.uri,
+                    self.db_slave_2.uri,
+                ]
+            }
+        }
+        db.init_app(config)
+        db.register_base(Base)
+        db.create_all()
+
+        # make slave
+        with open(self.db_default.db_file) as f:
+            # create slave without data
+            with open(self.db_slave_2.db_file, 'wb') as d:
+                d.write(f.read())
+
+        user = User(name='alchemy')
+        db.session.add(user)
+        db.session.commit()
+
+        # copy one slave
+        with open(self.db_default.db_file) as f:
+            with open(self.db_slave_1.db_file, 'wb') as d:
+                d.write(f.read())
+
+        rv = []
+        for i in range(40):
+            rv.append(User.query.filter_by(name='alchemy').first())
+
+        assert any(rv)
+        assert not all(rv)
