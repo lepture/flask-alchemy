@@ -22,6 +22,9 @@ setup(
     zip_safe=False,
     platforms='any',
     tests_require=['nose'],
+    install_requires=[
+        "SQLAlchemy",
+    ],
     test_suite='nose.collector',
     classifiers=[
         'Development Status :: 1 - Planning',

@@ -6,6 +6,22 @@ Flask-Alchemy
 Flask-Alchemy is designed to work with SQLAlchemy default declarative_base,
 with powerful master-slave and separated databases support.
 
+.. image:: https://img.shields.io/badge/flask-unregistered-red.svg?style=flat
+   :target: https://github.com/pocoo/metaflask
+   :alt: Meta Flask
+.. image:: https://pypip.in/wheel/flask-alchemy/badge.svg?style=flat
+   :target: https://pypi.python.org/pypi/flask-alchemy/
+   :alt: Wheel Status
+.. image:: https://pypip.in/version/flask-alchemy/badge.svg?style=flat
+   :target: https://pypi.python.org/pypi/flask-alchemy/
+   :alt: Latest Version
+.. image:: https://travis-ci.org/lepture/flask-alchemy.svg?branch=master
+   :target: https://travis-ci.org/lepture/flask-alchemy
+   :alt: Travis CI Status
+.. image:: https://coveralls.io/repos/lepture/flask-alchemy/badge.svg?branch=master
+   :target: https://coveralls.io/r/lepture/flask-alchemy
+   :alt: Coverage Status
+
 
 Getting Started
 ---------------
