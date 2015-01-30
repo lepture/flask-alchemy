@@ -107,7 +107,7 @@ class AlchemyTest(unittest.TestCase):
         db.create_all()
 
         # make slave
-        with open(self.db_default.db_file) as f:
+        with open(self.db_default.db_file, 'rb') as f:
             with open(self.db_alt.db_file, 'wb') as d:
                 d.write(f.read())
 
@@ -152,7 +152,7 @@ class MultipleSlaveTest(unittest.TestCase):
         db.create_all()
 
         # make slave
-        with open(self.db_default.db_file) as f:
+        with open(self.db_default.db_file, 'rb') as f:
             # create slave without data
             with open(self.db_slave_2.db_file, 'wb') as d:
                 d.write(f.read())
@@ -162,7 +162,7 @@ class MultipleSlaveTest(unittest.TestCase):
         db.session.commit()
 
         # copy one slave
-        with open(self.db_default.db_file) as f:
+        with open(self.db_default.db_file, 'rb') as f:
             with open(self.db_slave_1.db_file, 'wb') as d:
                 d.write(f.read())
 
